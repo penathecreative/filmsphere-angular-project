@@ -18,6 +18,24 @@ export class FetchApiDataService {
   // This will provide HttpClient to the entire class, making it available via this.http
   constructor(private http: HttpClient) {}
 
+  private getToken(): string {
+    const user = localStorage.getItem('user');
+    return user ? JSON.parse(user).token : '';
+  }
+
+  private handleError(error: HttpErrorResponse): Observable<never> {
+    if (error.error instanceof ErrorEvent) {
+      console.error('Some error occurred:', error.error.message);
+    } else {
+      console.error(
+        `Error Status code ${error.status}, ` + `Error body is: ${error.error}`
+      );
+    }
+    return throwError(
+      () => new Error('Something bad happened; please try again later.')
+    );
+  }
+
   // Making the api call for the user registration endpoint
   public userRegistration(userDetails: any): Observable<any> {
     return this.http
@@ -41,9 +59,11 @@ export class FetchApiDataService {
 
   //Api Call to Get all movies
   public getAllMovies(): Observable<any> {
-    const token = localStorage.getItem('token');
+    const token = this.getToken();
     if (!token) {
-      return throwError('No token found. Please log in again.');
+      return throwError(
+        () => new Error('No token found. Please log in again.')
+      );
     }
     return this.http
       .get(apiUrl + 'movies', {
@@ -56,7 +76,12 @@ export class FetchApiDataService {
 
   //Api Call to Get a single movie
   public getOneMovie(title: string): Observable<any> {
-    const token = localStorage.getItem('token');
+    const token = this.getToken();
+    if (!token) {
+      return throwError(
+        () => new Error('No token found. Please log in again.')
+      );
+    }
     return this.http
       .get(apiUrl + 'movies/' + title, {
         headers: new HttpHeaders({
@@ -68,7 +93,12 @@ export class FetchApiDataService {
 
   //Api Call to Get a Director
   public getDirector(directorName: string): Observable<any> {
-    const token = localStorage.getItem('token');
+    const token = this.getToken();
+    if (!token) {
+      return throwError(
+        () => new Error('No token found. Please log in again.')
+      );
+    }
     return this.http
       .get(apiUrl + 'movies/directors/' + directorName, {
         headers: new HttpHeaders({
@@ -77,10 +107,14 @@ export class FetchApiDataService {
       })
       .pipe(map(this.extractResponseData), catchError(this.handleError));
   }
-
   //Api Call to Get a User
   public getUser(username: string): Observable<any> {
-    const token = localStorage.getItem('token');
+    const token = this.getToken();
+    if (!token) {
+      return throwError(
+        () => new Error('No token found. Please log in again.')
+      );
+    }
     return this.http
       .get(apiUrl + 'users/' + username, {
         headers: new HttpHeaders({
@@ -92,7 +126,12 @@ export class FetchApiDataService {
 
   //Api Call to Get FavoriteMovies
   public getFavoriteMovies(username: string): Observable<any> {
-    const token = localStorage.getItem('token');
+    const token = this.getToken();
+    if (!token) {
+      return throwError(
+        () => new Error('No token found. Please log in again.')
+      );
+    }
     return this.http
       .get(apiUrl + 'users/' + username, {
         headers: new HttpHeaders({
@@ -107,7 +146,12 @@ export class FetchApiDataService {
 
   //Api Call to Add a Movie to Favorite Movies endpoint
   public addFavoriteMovies(username: string, movieID: string): Observable<any> {
-    const token = localStorage.getItem('token');
+    const token = this.getToken();
+    if (!token) {
+      return throwError(
+        () => new Error('No token found. Please log in again.')
+      );
+    }
     return this.http
       .post(
         apiUrl + 'users/' + username + '/movies/' + movieID,
@@ -123,7 +167,12 @@ export class FetchApiDataService {
 
   //Api Call to Edit User
   public editUser(username: string, userDetails: any): Observable<any> {
-    const token = localStorage.getItem('token');
+    const token = this.getToken();
+    if (!token) {
+      return throwError(
+        () => new Error('No token found. Please log in again.')
+      );
+    }
     return this.http
       .put(apiUrl + 'users/' + username, userDetails, {
         headers: new HttpHeaders({
@@ -135,7 +184,12 @@ export class FetchApiDataService {
 
   //Api Call to Delete User
   public deleteUser(username: string): Observable<any> {
-    const token = localStorage.getItem('token');
+    const token = this.getToken();
+    if (!token) {
+      return throwError(
+        () => new Error('No token found. Please log in again.')
+      );
+    }
     return this.http
       .delete(apiUrl + 'users/' + username, {
         headers: new HttpHeaders({
@@ -150,7 +204,12 @@ export class FetchApiDataService {
     username: string,
     movieID: string
   ): Observable<any> {
-    const token = localStorage.getItem('token');
+    const token = this.getToken();
+    if (!token) {
+      return throwError(
+        () => new Error('No token found. Please log in again.')
+      );
+    }
     return this.http
       .delete(apiUrl + 'users/' + username + '/movies/' + movieID, {
         headers: new HttpHeaders({
@@ -164,16 +223,5 @@ export class FetchApiDataService {
   private extractResponseData(res: object): any {
     const body = res;
     return body || {};
-  }
-
-  private handleError(error: HttpErrorResponse): any {
-    if (error.error instanceof ErrorEvent) {
-      console.error('Some error occurred:', error.error.message);
-    } else {
-      console.error(
-        `Error Status code ${error.status}, ` + `Error body is: ${error.error}`
-      );
-    }
-    return throwError('Something bad happened; please try again later.');
   }
 }

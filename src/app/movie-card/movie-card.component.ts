@@ -22,10 +22,19 @@ export class MovieCardComponent {
   }
 
   getMovies(): void {
-    this.fetchApiData.getAllMovies().subscribe((resp: any) => {
-      this.movies = resp;
-      console.log(this.movies);
-      return this.movies;
-    });
+    this.fetchApiData.getAllMovies().subscribe(
+      (res) => {
+        this.movies = res;
+
+        let user = JSON.parse(localStorage.getItem('user') || '');
+        this.movies.forEach((movie: any) => {
+          movie.isFavorite = user.favoriteMovies.includes(movie._id);
+        });
+        return this.movies;
+      },
+      (err) => {
+        console.error(err);
+      }
+    );
   }
 }

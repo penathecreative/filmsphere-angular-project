@@ -36,37 +36,32 @@ export class UserLoginFormComponent implements OnInit {
 
   ngOnInit(): void {}
 
-  logInUser(): void {
-    console.log('User data:', this.userData); // Log user data
-    this.fetchApiData.userLogin(this.userData).subscribe({
-      next: (res) => {
+  loginUser(): void {
+    this.fetchApiData.userLogin(this.userData).subscribe(
+      (result) => {
         this.dialogRef.close();
-        this.snackBar.open(
-          `Login success, Welcome ${res.user.Username}`,
-          'OK',
-          {
-            duration: 2000,
-          }
-        );
-        let user = {
-          id: res.user._id,
-          Username: res.user.Username,
-          birthday: res.user.birthday,
-          email: res.user.email,
-        };
-        // Store user and token separately
-        localStorage.setItem('user', JSON.stringify(user));
-        localStorage.setItem('token', res.token);
 
-        // Navigate to the movies page after successful login
-        this.router.navigate(['/movies']);
-      },
-      error: (err) => {
-        console.error('Login error:', err); // Log the complete error response
-        this.snackBar.open('Login fail', 'OK', {
-          duration: 2000,
+        // Store user object (including token) in localStorage
+        const user = {
+          id: result.user._id,
+          Username: result.user.Username,
+          birthday: result.user.birthday,
+          email: result.user.email,
+          token: result.token,
+        };
+        localStorage.setItem('user', JSON.stringify(user));
+
+        this.snackBar.open(user.Username + ' successfully logged in', 'OK', {
+          duration: 4000,
         });
+        this.router.navigate(['movies']);
       },
-    });
+      (error) => {
+        console.error('Login error:', error);
+        this.snackBar.open('Login failed', 'OK', {
+          duration: 4000,
+        });
+      }
+    );
   }
 }
