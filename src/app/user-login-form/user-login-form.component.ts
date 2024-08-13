@@ -1,4 +1,4 @@
-import { Component, OnInit, Input } from '@angular/core';
+import { Component, OnInit, Input, Inject, PLATFORM_ID } from '@angular/core';
 import { MatDialogRef } from '@angular/material/dialog';
 import { FetchApiDataService } from '../fetch-api-data.service';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -9,6 +9,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
+import { isPlatformBrowser } from '@angular/common';
 
 @Component({
   selector: 'app-user-login-form',
@@ -31,7 +32,8 @@ export class UserLoginFormComponent implements OnInit {
     public fetchApiData: FetchApiDataService,
     public dialogRef: MatDialogRef<UserLoginFormComponent>,
     public snackBar: MatSnackBar,
-    private router: Router
+    private router: Router,
+    @Inject(PLATFORM_ID) private platformId: Object // Injecting PLATFORM_ID to detect SSR
   ) {}
 
   ngOnInit(): void {}
@@ -41,19 +43,26 @@ export class UserLoginFormComponent implements OnInit {
       (result) => {
         this.dialogRef.close();
 
-        // Store user object (including token) in localStorage
-        const user = {
-          id: result.user._id,
-          Username: result.user.Username,
-          birthday: result.user.birthday,
-          email: result.user.email,
-          token: result.token,
-        };
-        localStorage.setItem('user', JSON.stringify(user));
+        // Check if we're running in the browser before using localStorage
+        if (isPlatformBrowser(this.platformId)) {
+          // Store user object (including token) in localStorage
+          const user = {
+            id: result.user._id,
+            Username: result.user.Username,
+            birthday: result.user.birthday,
+            email: result.user.email,
+            token: result.token,
+          };
+          localStorage.setItem('user', JSON.stringify(user));
+        }
 
-        this.snackBar.open(user.Username + ' successfully logged in', 'OK', {
-          duration: 4000,
-        });
+        this.snackBar.open(
+          result.user.Username + ' successfully logged in',
+          'OK',
+          {
+            duration: 4000,
+          }
+        );
         this.router.navigate(['movies']);
       },
       (error) => {

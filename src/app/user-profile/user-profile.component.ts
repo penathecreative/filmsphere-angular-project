@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, Inject, PLATFORM_ID } from '@angular/core';
 import { FetchApiDataService } from '../fetch-api-data.service';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -7,7 +7,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatSnackBarModule } from '@angular/material/snack-bar';
-import { CommonModule } from '@angular/common';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 
 @Component({
   selector: 'app-user-profile',
@@ -28,11 +28,16 @@ export class UserProfileComponent implements OnInit {
   userData: any = {};
   favoriteMovies: any[] = [];
 
-  constructor(public fetchApiData: FetchApiDataService, public router: Router) {
-    this.userData = JSON.parse(localStorage.getItem('user') || '{}');
-  }
+  constructor(
+    public fetchApiData: FetchApiDataService,
+    public router: Router,
+    @Inject(PLATFORM_ID) private platformId: Object // Injecting PLATFORM_ID to detect SSR
+  ) {}
 
   ngOnInit(): void {
+    if (isPlatformBrowser(this.platformId)) {
+      this.userData = JSON.parse(localStorage.getItem('user') || '{}');
+    }
     this.getUser();
   }
 
@@ -45,7 +50,9 @@ export class UserProfileComponent implements OnInit {
           password: this.userData.password,
           token: this.userData.token,
         };
-        localStorage.setItem('user', JSON.stringify(this.userData));
+        if (isPlatformBrowser(this.platformId)) {
+          localStorage.setItem('user', JSON.stringify(this.userData));
+        }
         this.getFavoriteMovies();
       },
       (err: any) => {
@@ -55,7 +62,9 @@ export class UserProfileComponent implements OnInit {
   }
 
   resetUser(): void {
-    this.userData = JSON.parse(localStorage.getItem('user') || '{}');
+    if (isPlatformBrowser(this.platformId)) {
+      this.userData = JSON.parse(localStorage.getItem('user') || '{}');
+    }
   }
 
   backToMovies(): void {
@@ -81,7 +90,9 @@ export class UserProfileComponent implements OnInit {
         password: this.userData.password,
         token: this.userData.token,
       };
-      localStorage.setItem('user', JSON.stringify(this.userData));
+      if (isPlatformBrowser(this.platformId)) {
+        localStorage.setItem('user', JSON.stringify(this.userData));
+      }
       this.getFavoriteMovies();
     });
   }
@@ -102,6 +113,8 @@ export class UserProfileComponent implements OnInit {
 
   logout(): void {
     this.router.navigate(['welcome']);
-    localStorage.removeItem('user');
+    if (isPlatformBrowser(this.platformId)) {
+      localStorage.removeItem('user');
+    }
   }
 }
