@@ -1,13 +1,28 @@
-import { Component, OnInit, Inject, PLATFORM_ID } from '@angular/core';
-import { FetchApiDataService } from '../fetch-api-data.service';
+import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { CommonModule } from '@angular/common';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
-import { MatSnackBarModule } from '@angular/material/snack-bar';
-import { CommonModule, isPlatformBrowser } from '@angular/common';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { FetchApiDataService } from '../fetch-api-data.service';
+
+interface User {
+  _id: string;
+  username: string;
+  email: string;
+  birthday: string;
+  favoriteMovies: string[];
+  token: string;
+}
+
+interface Movie {
+  _id: string;
+  title: string;
+  imagePath: string;
+}
 
 @Component({
   selector: 'app-user-profile',
@@ -25,96 +40,96 @@ import { CommonModule, isPlatformBrowser } from '@angular/common';
   styleUrls: ['./user-profile.component.scss'],
 })
 export class UserProfileComponent implements OnInit {
-  userData: any = {};
-  favoriteMovies: any[] = [];
+  user: User;
+  favoriteMovies: Movie[] = [];
 
   constructor(
-    public fetchApiData: FetchApiDataService,
-    public router: Router,
-    @Inject(PLATFORM_ID) private platformId: Object // Injecting PLATFORM_ID to detect SSR
-  ) {}
+    private fetchApiData: FetchApiDataService,
+    private router: Router,
+    private snackBar: MatSnackBar
+  ) {
+    this.user = this.getUserFromStorage();
+  }
 
   ngOnInit(): void {
-    if (isPlatformBrowser(this.platformId)) {
-      this.userData = JSON.parse(localStorage.getItem('user') || '{}');
-    }
     this.getUser();
   }
 
-  updateUser(): void {
-    this.fetchApiData.editUser(this.userData.username, this.userData).subscribe(
-      (res: any) => {
-        this.userData = {
-          ...res,
-          id: res._id,
-          password: this.userData.password,
-          token: this.userData.token,
-        };
-        if (isPlatformBrowser(this.platformId)) {
-          localStorage.setItem('user', JSON.stringify(this.userData));
-        }
+  getUserFromStorage(): User {
+    const storedUser = localStorage.getItem('user');
+    return storedUser ? JSON.parse(storedUser) : ({} as User);
+  }
+
+  getUser(): void {
+    this.fetchApiData.getUser(this.user.username).subscribe({
+      next: (res: User) => {
+        this.user = { ...res, token: this.user.token };
+        this.updateLocalStorage();
         this.getFavoriteMovies();
       },
-      (err: any) => {
-        console.error(err);
-      }
-    );
+      error: (error) => this.handleError(error, 'Failed to fetch user data'),
+    });
+  }
+
+  updateUser(): void {
+    this.fetchApiData.editUser(this.user.username, this.user).subscribe({
+      next: (res: User) => {
+        this.user = { ...res, token: this.user.token };
+        this.updateLocalStorage();
+        this.showSnackBar('User updated successfully');
+      },
+      error: (error) => this.handleError(error, 'Failed to update user'),
+    });
+  }
+
+  getFavoriteMovies(): void {
+    this.fetchApiData.getFavoriteMovies(this.user.username).subscribe({
+      next: (res: Movie[]) => {
+        this.favoriteMovies = res;
+      },
+      error: (error) =>
+        this.handleError(error, 'Failed to fetch favorite movies'),
+    });
+  }
+
+  removeFromFavorite(movieId: string): void {
+    this.fetchApiData
+      .deleteFavoriteMovies(this.user.username, movieId)
+      .subscribe({
+        next: (res: User) => {
+          this.user.favoriteMovies = res.favoriteMovies;
+          this.updateLocalStorage();
+          this.getFavoriteMovies();
+          this.showSnackBar('Movie removed from favorites');
+        },
+        error: (error) =>
+          this.handleError(error, 'Failed to remove movie from favorites'),
+      });
   }
 
   resetUser(): void {
-    if (isPlatformBrowser(this.platformId)) {
-      this.userData = JSON.parse(localStorage.getItem('user') || '{}');
-    }
+    this.user = this.getUserFromStorage();
+  }
+
+  logout(): void {
+    localStorage.removeItem('user');
+    this.router.navigate(['welcome']);
   }
 
   backToMovies(): void {
     this.router.navigate(['movies']);
   }
 
-  getFavoriteMovies(): void {
-    this.fetchApiData.getFavoriteMovies(this.userData.username).subscribe(
-      (res: any) => {
-        this.favoriteMovies = res;
-      },
-      (err: any) => {
-        console.error(err);
-      }
-    );
+  private updateLocalStorage(): void {
+    localStorage.setItem('user', JSON.stringify(this.user));
   }
 
-  getUser(): void {
-    this.fetchApiData.getUser(this.userData.username).subscribe((res: any) => {
-      this.userData = {
-        ...res,
-        id: res._id,
-        password: this.userData.password,
-        token: this.userData.token,
-      };
-      if (isPlatformBrowser(this.platformId)) {
-        localStorage.setItem('user', JSON.stringify(this.userData));
-      }
-      this.getFavoriteMovies();
-    });
+  private showSnackBar(message: string): void {
+    this.snackBar.open(message, 'OK', { duration: 2000 });
   }
 
-  removeFromFavorite(movieId: string): void {
-    this.fetchApiData
-      .deleteFavoriteMovies(this.userData.username, movieId)
-      .subscribe(
-        (res: any) => {
-          this.userData.favoriteMovies = res.favoriteMovies;
-          this.getFavoriteMovies();
-        },
-        (err: any) => {
-          console.error(err);
-        }
-      );
-  }
-
-  logout(): void {
-    this.router.navigate(['welcome']);
-    if (isPlatformBrowser(this.platformId)) {
-      localStorage.removeItem('user');
-    }
+  private handleError(error: any, message: string): void {
+    console.error(error);
+    this.showSnackBar(message);
   }
 }
