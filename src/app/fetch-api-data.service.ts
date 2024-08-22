@@ -5,9 +5,9 @@ import {
   HttpHeaders,
   HttpErrorResponse,
 } from '@angular/common/http';
-import { Observable, throwError, tap } from 'rxjs';
+import { Observable, throwError } from 'rxjs';
 
-//Declaring the api url that will provide data for the client app
+// Declaring the API URL that will provide data for the client app
 const apiUrl = 'https://filmsphere-5e594b2ffc50.herokuapp.com/';
 
 @Injectable({
@@ -18,11 +18,7 @@ export class FetchApiDataService {
   // This will provide HttpClient to the entire class, making it available via this.http
   constructor(private http: HttpClient) {}
 
-  private getToken(): string {
-    const user = localStorage.getItem('user');
-    return user ? JSON.parse(user).token : '';
-  }
-
+  // Handle errors
   private handleError(error: HttpErrorResponse): Observable<never> {
     if (error.error instanceof ErrorEvent) {
       console.error('Some error occurred:', error.error.message);
@@ -36,192 +32,152 @@ export class FetchApiDataService {
     );
   }
 
-  // Making the api call for the user registration endpoint
+  // Extract response data
+  private extractResponseData(res: any): any {
+    const body = res;
+    return body || {};
+  }
+
+  // Helper method to get token from localStorage
+  private getToken(): string {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    return user.token || '';
+  }
+
+  // Register a user
   public userRegistration(userDetails: any): Observable<any> {
+    console.log(userDetails);
     return this.http
       .post(apiUrl + 'users', userDetails)
       .pipe(catchError(this.handleError));
   }
 
-  // Making the api call for the user login endpoint
+  // Login a user
   public userLogin(userDetails: any): Observable<any> {
-    console.log('Attempting login with:', userDetails);
-    return this.http.post(apiUrl + 'login', userDetails).pipe(
-      tap((response: any) => console.log('Login response:', response)),
-      catchError((error: any) => {
-        console.error('Login error:', error);
-        return throwError(
-          () => new Error(error.error.message || 'Login failed')
-        );
-      })
-    );
+    console.log(userDetails);
+    return this.http
+      .post(apiUrl + 'login', userDetails)
+      .pipe(catchError(this.handleError));
   }
 
-  //Api Call to Get all movies
+  // Get all movies
   public getAllMovies(): Observable<any> {
-    const token = this.getToken();
-    if (!token) {
-      return throwError(
-        () => new Error('No token found. Please log in again.')
-      );
-    }
     return this.http
       .get(apiUrl + 'movies', {
         headers: new HttpHeaders({
-          Authorization: 'Bearer ' + token,
+          Authorization: 'Bearer ' + this.getToken(),
         }),
       })
       .pipe(map(this.extractResponseData), catchError(this.handleError));
   }
 
-  //Api Call to Get a single movie
-  public getOneMovie(title: string): Observable<any> {
-    const token = this.getToken();
-    if (!token) {
-      return throwError(
-        () => new Error('No token found. Please log in again.')
-      );
-    }
+  // Get a single movie by name
+  public getOneMovie(movieName: string): Observable<any> {
     return this.http
-      .get(apiUrl + 'movies/' + title, {
+      .get(apiUrl + 'movies/' + movieName, {
         headers: new HttpHeaders({
-          Authorization: 'Bearer ' + token,
+          Authorization: 'Bearer ' + this.getToken(),
         }),
       })
       .pipe(map(this.extractResponseData), catchError(this.handleError));
   }
 
-  //Api Call to Get a Director
+  // Get director details
   public getDirector(directorName: string): Observable<any> {
-    const token = this.getToken();
-    if (!token) {
-      return throwError(
-        () => new Error('No token found. Please log in again.')
-      );
-    }
     return this.http
-      .get(apiUrl + 'movies/directors/' + directorName, {
+      .get(apiUrl + 'movies/director/' + directorName, {
         headers: new HttpHeaders({
-          Authorization: 'Bearer ' + token,
-        }),
-      })
-      .pipe(map(this.extractResponseData), catchError(this.handleError));
-  }
-  //Api Call to Get a User
-  public getUser(username: string): Observable<any> {
-    const token = this.getToken();
-    if (!token) {
-      return throwError(
-        () => new Error('No token found. Please log in again.')
-      );
-    }
-    return this.http
-      .get(apiUrl + 'users/' + username, {
-        headers: new HttpHeaders({
-          Authorization: 'Bearer ' + token,
+          Authorization: 'Bearer ' + this.getToken(),
         }),
       })
       .pipe(map(this.extractResponseData), catchError(this.handleError));
   }
 
-  //Api Call to Get FavoriteMovies
-  public getFavoriteMovies(username: string): Observable<any> {
-    const token = this.getToken();
-    if (!token) {
-      return throwError(
-        () => new Error('No token found. Please log in again.')
-      );
-    }
+  // Get genre details
+  public getGenre(genreName: string): Observable<any> {
+    return this.http
+      .get(apiUrl + 'movies/genre/' + genreName, {
+        headers: new HttpHeaders({
+          Authorization: 'Bearer ' + this.getToken(),
+        }),
+      })
+      .pipe(map(this.extractResponseData), catchError(this.handleError));
+  }
+
+  // Get user details
+  public getUser(username: string): Observable<any> {
     return this.http
       .get(apiUrl + 'users/' + username, {
         headers: new HttpHeaders({
-          Authorization: 'Bearer ' + token,
+          Authorization: 'Bearer ' + this.getToken(),
+        }),
+      })
+      .pipe(map(this.extractResponseData), catchError(this.handleError));
+  }
+
+  // Get favorite movies of a user
+  public getFavouriteMovies(username: string): Observable<any> {
+    return this.http
+      .get(apiUrl + 'users/' + username, {
+        headers: new HttpHeaders({
+          Authorization: 'Bearer ' + this.getToken(),
         }),
       })
       .pipe(
-        map((data) => this.extractResponseData(data).FavoriteMovies),
+        map(this.extractResponseData),
+        map((data) => data.favoriteMovies),
         catchError(this.handleError)
       );
   }
 
-  //Api Call to Add a Movie to Favorite Movies endpoint
-  public addFavoriteMovies(username: string, movieID: string): Observable<any> {
-    const token = this.getToken();
-    if (!token) {
-      return throwError(
-        () => new Error('No token found. Please log in again.')
-      );
-    }
+  // Add a movie to favorite movies
+  public addFavouriteMovie(username: string, movieID: string): Observable<any> {
     return this.http
       .post(
         apiUrl + 'users/' + username + '/movies/' + movieID,
         {},
         {
           headers: new HttpHeaders({
-            Authorization: 'Bearer ' + token,
+            Authorization: 'Bearer ' + this.getToken(),
           }),
         }
       )
       .pipe(map(this.extractResponseData), catchError(this.handleError));
   }
 
-  //Api Call to Edit User
-  public editUser(username: string, userDetails: any): Observable<any> {
-    const token = this.getToken();
-    if (!token) {
-      return throwError(
-        () => new Error('No token found. Please log in again.')
-      );
-    }
+  // Edit user details
+  public editUser(username: string, userDetails: object): Observable<any> {
     return this.http
       .put(apiUrl + 'users/' + username, userDetails, {
         headers: new HttpHeaders({
-          Authorization: 'Bearer ' + token,
+          Authorization: 'Bearer ' + this.getToken(),
         }),
       })
       .pipe(map(this.extractResponseData), catchError(this.handleError));
   }
 
-  //Api Call to Delete User
+  // Delete a user
   public deleteUser(username: string): Observable<any> {
-    const token = this.getToken();
-    if (!token) {
-      return throwError(
-        () => new Error('No token found. Please log in again.')
-      );
-    }
     return this.http
       .delete(apiUrl + 'users/' + username, {
         headers: new HttpHeaders({
-          Authorization: 'Bearer ' + token,
+          Authorization: 'Bearer ' + this.getToken(),
         }),
       })
       .pipe(map(this.extractResponseData), catchError(this.handleError));
   }
 
-  //Api Call to Delete a Movie to Favorite Movies endpoint
-  public deleteFavoriteMovies(
+  // Delete a movie from favorite movies
+  public deleteFavouriteMovie(
     username: string,
     movieID: string
   ): Observable<any> {
-    const token = this.getToken();
-    if (!token) {
-      return throwError(
-        () => new Error('No token found. Please log in again.')
-      );
-    }
     return this.http
       .delete(apiUrl + 'users/' + username + '/movies/' + movieID, {
         headers: new HttpHeaders({
-          Authorization: 'Bearer ' + token,
+          Authorization: 'Bearer ' + this.getToken(),
         }),
       })
       .pipe(map(this.extractResponseData), catchError(this.handleError));
-  }
-
-  // Non-typed response extraction
-  private extractResponseData(res: object): any {
-    const body = res;
-    return body || {};
   }
 }

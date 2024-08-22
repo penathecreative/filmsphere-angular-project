@@ -1,26 +1,15 @@
-import { Component, OnInit, Inject, PLATFORM_ID } from '@angular/core';
-import { CommonModule, isPlatformBrowser } from '@angular/common';
+import { Component, OnInit } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FetchApiDataService } from '../fetch-api-data.service';
+import { Router, RouterModule } from '@angular/router';
+import { MatDialog } from '@angular/material/dialog';
+import { DialogComponent } from '../dialog/dialog.component';
 import { MatCardModule } from '@angular/material/card';
-import { MatDialogModule, MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
-import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatButtonModule } from '@angular/material/button';
-import { FetchApiDataService } from '../fetch-api-data.service';
-import { Observer } from 'rxjs';
-import { Movie } from '../models';
-import { DialogComponent } from '../dialog/dialog.component';
-import { Router, RouterModule } from '@angular/router';
-
-// If not already defined
-interface User {
-  _id: string;
-  username: string;
-  email: string;
-  birthday: string;
-  favoriteMovies: string[];
-  token: string;
-}
+import { Movie } from '../models'; // Import the Movie interface
 
 @Component({
   selector: 'app-movie-card',
@@ -28,9 +17,7 @@ interface User {
   imports: [
     CommonModule,
     MatCardModule,
-    MatDialogModule,
     MatIconModule,
-    MatSnackBarModule,
     MatMenuModule,
     MatButtonModule,
     RouterModule,
@@ -39,165 +26,72 @@ interface User {
   styleUrls: ['./movie-card.component.scss'],
 })
 export class MovieCardComponent implements OnInit {
-  movies: any[] = [];
-  favoriteMovies: any[] = [];
-  currentUser: string = '';
+  movies: Movie[] = []; // Use the Movie interface
+  favoriteMovies: string[] = []; // Array of favorite movie IDs
 
   constructor(
     private fetchApiData: FetchApiDataService,
-    private snackBar: MatSnackBar,
-    private dialog: MatDialog,
     private router: Router,
-    @Inject(PLATFORM_ID) private platformId: Object
-  ) {
-    console.log('MovieCardComponent constructor called');
-  }
+    private dialog: MatDialog,
+    private snackBar: MatSnackBar
+  ) {}
 
   ngOnInit(): void {
-    console.log('MovieCardComponent ngOnInit called');
     this.getMovies();
-    this.getUserFromStorage();
-  }
-  getUserFromStorage(): User | undefined {
-    console.log('getUserFromStorage method called');
-
-    if (typeof window !== 'undefined') {
-      console.log('Is platform browser:', typeof window !== 'undefined');
-
-      const userString = localStorage.getItem('user');
-      console.log('Attempting to get user from localStorage');
-      console.log('userString:', userString);
-
-      if (userString) {
-        try {
-          const user: User = JSON.parse(userString);
-          console.log('Parsed user:', user);
-          return user;
-        } catch (error) {
-          console.error('Error parsing user from localStorage:', error);
-        }
-      } else {
-        console.warn('No user found in localStorage');
-      }
-    } else {
-      console.warn('Not running in a browser, localStorage not available');
-    }
-    return undefined;
   }
 
   getMovies(): void {
-    console.log('getMovies method called');
-    const observer: Observer<any> = {
-      next: (movies: any) => {
-        this.movies = movies;
-        console.log('Movies fetched:', this.movies.length);
+    this.fetchApiData.getAllMovies().subscribe(
+      (res: Movie[]) => {
+        this.movies = res;
+        this.setFavoriteFlags();
       },
-      error: (error: any) => {
-        console.error('Error fetching movies:', error);
-        this.snackBar.open('Error fetching movies', 'OK', {
-          duration: 4000,
-        });
-      },
-      complete: () => {
-        console.log('getMovies observable completed');
-      },
-    };
-    this.fetchApiData.getAllMovies().subscribe(observer);
+      (err) => {
+        console.error('Error fetching movies:', err);
+      }
+    );
   }
 
-  getFavoriteMovies(): void {
-    console.log('getFavoriteMovies method called');
-    if (isPlatformBrowser(this.platformId) && this.currentUser) {
-      const observer: Observer<any> = {
-        next: (favoriteMovies: any) => {
-          this.favoriteMovies = favoriteMovies;
-          console.log('Favorite movies fetched:', this.favoriteMovies.length);
-        },
-        error: (error: any) => {
-          console.error('Error fetching favorite movies:', error);
-          this.snackBar.open('Error fetching favorite movies', 'OK', {
-            duration: 4000,
-          });
-        },
-        complete: () => {
-          console.log('getFavoriteMovies observable completed');
-        },
-      };
-      this.fetchApiData.getFavoriteMovies(this.currentUser).subscribe(observer);
-    } else {
-      console.log(
-        'Not in browser or no current user, skipping favorite movies fetch'
-      );
-      this.favoriteMovies = [];
-    }
+  setFavoriteFlags(): void {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    this.favoriteMovies = user.favoriteMovies || [];
+  }
+
+  isFavorite(movieId: string): boolean {
+    return this.favoriteMovies.includes(movieId);
   }
 
   toggleFavorite(movieId: string): void {
-    console.log('toggleFavorite method called for movie:', movieId);
-    if (isPlatformBrowser(this.platformId) && this.currentUser) {
-      const observer: Observer<any> = {
-        next: () => {
-          const action = this.favoriteMovies.includes(movieId)
-            ? 'removed from'
-            : 'added to';
-          console.log(`Movie ${action} favorites`);
-          this.snackBar.open(`Successfully ${action} favorites`, 'OK', {
-            duration: 4000,
-          });
-          this.getFavoriteMovies();
-        },
-        error: (error: any) => {
-          const action = this.favoriteMovies.includes(movieId)
-            ? 'removing from'
-            : 'adding to';
-          console.error(`Error ${action} favorites:`, error);
-          this.snackBar.open(`Error ${action} favorites`, 'OK', {
-            duration: 4000,
-          });
-        },
-        complete: () => {
-          console.log('toggleFavorite observable completed');
-        },
-      };
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
 
-      if (this.favoriteMovies.includes(movieId)) {
-        this.fetchApiData
-          .deleteFavoriteMovies(this.currentUser, movieId)
-          .subscribe(observer);
-      } else {
-        this.fetchApiData
-          .addFavoriteMovies(this.currentUser, movieId)
-          .subscribe(observer);
-      }
-    } else {
-      console.warn(
-        'Favorite toggling is not available in server-side rendering'
+    if (this.isFavorite(movieId)) {
+      this.fetchApiData.deleteFavouriteMovie(user.Username, movieId).subscribe(
+        (res) => {
+          this.favoriteMovies = res.favoriteMovies;
+          localStorage.setItem('user', JSON.stringify(user));
+          this.snackBar.open('Removed from favorites', 'OK', {
+            duration: 2000,
+          });
+        },
+        (err) => {
+          console.error('Error removing favorite movie:', err);
+        }
       );
-    }
-  }
-
-  goToProfile(): void {
-    console.log('Navigating to profile');
-    this.router.navigate(['/profile']);
-  }
-
-  logout(): void {
-    console.log('Logout method called');
-    if (isPlatformBrowser(this.platformId)) {
-      localStorage.removeItem('user');
-      localStorage.removeItem('token');
-      console.log('User data removed from localStorage');
-      this.snackBar.open('Successfully logged out', 'OK', {
-        duration: 2000,
-      });
-      this.router.navigate(['/welcome']);
     } else {
-      console.warn('Logout not available in server-side rendering');
+      this.fetchApiData.addFavouriteMovie(user.Username, movieId).subscribe(
+        (res) => {
+          this.favoriteMovies = res.favoriteMovies;
+          localStorage.setItem('user', JSON.stringify(user));
+          this.snackBar.open('Added to favorites', 'OK', { duration: 2000 });
+        },
+        (err) => {
+          console.error('Error adding favorite movie:', err);
+        }
+      );
     }
   }
 
   showGenre(movie: Movie): void {
-    console.log('Showing genre dialog for movie:', movie.Title);
     this.dialog.open(DialogComponent, {
       data: {
         title: `Genre: ${movie.Genre.Name}`,
@@ -208,7 +102,6 @@ export class MovieCardComponent implements OnInit {
   }
 
   showDirector(movie: Movie): void {
-    console.log('Showing director dialog for movie:', movie.Title);
     this.dialog.open(DialogComponent, {
       data: {
         title: `Director: ${movie.Director.Name}`,
@@ -219,13 +112,21 @@ export class MovieCardComponent implements OnInit {
   }
 
   showDetail(movie: Movie): void {
-    console.log('Showing details dialog for movie:', movie.Title);
     this.dialog.open(DialogComponent, {
       data: {
-        title: `Title: ${movie.Title}`,
+        title: movie.Title,
         content: movie.Description,
       },
       width: '400px',
     });
+  }
+
+  logout(): void {
+    this.router.navigate(['welcome']);
+    localStorage.removeItem('user');
+  }
+
+  redirectProfile(): void {
+    this.router.navigate(['profile']);
   }
 }

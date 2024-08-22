@@ -83,7 +83,7 @@ export class UserProfileComponent implements OnInit {
   }
 
   getFavoriteMovies(): void {
-    this.fetchApiData.getFavoriteMovies(this.user.username).subscribe({
+    this.fetchApiData.getFavouriteMovies(this.user.username).subscribe({
       next: (res: Movie[]) => {
         this.favoriteMovies = res;
       },
@@ -94,7 +94,7 @@ export class UserProfileComponent implements OnInit {
 
   removeFromFavorite(movieId: string): void {
     this.fetchApiData
-      .deleteFavoriteMovies(this.user.username, movieId)
+      .deleteFavouriteMovie(this.user.username, movieId)
       .subscribe({
         next: (res: User) => {
           this.user.favoriteMovies = res.favoriteMovies;

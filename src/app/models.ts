@@ -22,10 +22,12 @@ export interface Movie {
   Genre: Genre;
   Director: Director;
   Featured: boolean;
+  ImagePath: string; // Image path for the movie poster
 }
 
-// Define the User interface if needed (example)
+// Define the User interface
 export interface User {
   username: string;
+  favoriteMovies: string[]; // Array of movie IDs that are favorited
   // add other user properties if needed
 }
