@@ -40,28 +40,30 @@ interface Movie {
   styleUrls: ['./user-profile.component.scss'],
 })
 export class UserProfileComponent implements OnInit {
-  user: User;
+  user: any = {};
   favoriteMovies: Movie[] = [];
+  userData = { Username: '', birthday: '', email: '', token: '' };
 
   constructor(
-    private fetchApiData: FetchApiDataService,
+    public fetchApiData: FetchApiDataService,
     private router: Router,
-    private snackBar: MatSnackBar
-  ) {
-    this.user = this.getUserFromStorage();
-  }
+    public snackBar: MatSnackBar
+  ) {}
 
   ngOnInit(): void {
     this.getUser();
+    this.getFavoriteMovies();
   }
 
-  getUserFromStorage(): User {
+  /**  initializeUser(): void {
     const storedUser = localStorage.getItem('user');
-    return storedUser ? JSON.parse(storedUser) : ({} as User);
-  }
+    if (storedUser) {
+      this.user = JSON.parse(storedUser);
+    }
+  }*/
 
-  getUser(): void {
-    this.fetchApiData.getUser(this.user.username).subscribe({
+  /*DgetUser(): void {
+    this.fetchApiData.getUser(localStorage.getItem('user') || '').subscribe({
       next: (res: User) => {
         this.user = { ...res, token: this.user.token };
         this.updateLocalStorage();
@@ -71,65 +73,81 @@ export class UserProfileComponent implements OnInit {
     });
   }
 
-  updateUser(): void {
-    this.fetchApiData.editUser(this.user.username, this.user).subscribe({
-      next: (res: User) => {
-        this.user = { ...res, token: this.user.token };
-        this.updateLocalStorage();
-        this.showSnackBar('User updated successfully');
-      },
-      error: (error) => this.handleError(error, 'Failed to update user'),
-    });
+
+  /**
+   * Get user details from localStorage
+   */
+
+  getUser(): void {
+    this.fetchApiData
+      .getUser(localStorage.getItem('user') || '')
+      .subscribe((resp: any) => {
+        this.user = resp;
+        return this.user;
+      });
   }
 
   getFavoriteMovies(): void {
-    this.fetchApiData.getFavouriteMovies(this.user.username).subscribe({
-      next: (res: Movie[]) => {
-        this.favoriteMovies = res;
+    const username = JSON.parse(localStorage.getItem('user') || '{}').Username;
+    if (!username) {
+      console.error('No user found in localStorage');
+      return;
+    }
+
+    this.fetchApiData.getFavouriteMovies(username).subscribe({
+      next: (resp: any[]) => {
+        this.favoriteMovies = resp;
       },
-      error: (error) =>
-        this.handleError(error, 'Failed to fetch favorite movies'),
+      error: (error) => {
+        console.error('Error fetching favorite movies:', error);
+        this.snackBar.open('Failed to fetch favorite movies', 'OK', {
+          duration: 2000,
+        });
+      },
+    });
+  }
+
+  updateUser(): void {
+    this.fetchApiData.editUser(this.user.Username, this.userData).subscribe({
+      next: (resp: any) => {
+        this.snackBar.open('User updated successfully', 'OK', {
+          duration: 2000,
+        });
+        localStorage.setItem('user', resp.username);
+        this.getUser();
+      },
+      error: (error) => {
+        console.error('Error updating user:', error);
+        this.snackBar.open('Failed to update user', 'OK', { duration: 2000 });
+      },
     });
   }
 
   removeFromFavorite(movieId: string): void {
-    this.fetchApiData
-      .deleteFavouriteMovie(this.user.username, movieId)
-      .subscribe({
-        next: (res: User) => {
-          this.user.favoriteMovies = res.favoriteMovies;
-          this.updateLocalStorage();
-          this.getFavoriteMovies();
-          this.showSnackBar('Movie removed from favorites');
-        },
-        error: (error) =>
-          this.handleError(error, 'Failed to remove movie from favorites'),
-      });
-  }
-
-  resetUser(): void {
-    this.user = this.getUserFromStorage();
+    const username = JSON.parse(localStorage.getItem('user') || '{}').Username;
+    this.fetchApiData.deleteFavouriteMovie(username, movieId).subscribe({
+      next: (resp: any) => {
+        this.snackBar.open('Movie removed from favorites', 'OK', {
+          duration: 2000,
+        });
+        this.getFavoriteMovies();
+      },
+      error: (error) => {
+        console.error('Error removing movie from favorites:', error);
+        this.snackBar.open('Failed to remove movie from favorites', 'OK', {
+          duration: 2000,
+        });
+      },
+    });
   }
 
   logout(): void {
     localStorage.removeItem('user');
+    localStorage.removeItem('token');
     this.router.navigate(['welcome']);
   }
 
   backToMovies(): void {
     this.router.navigate(['movies']);
-  }
-
-  private updateLocalStorage(): void {
-    localStorage.setItem('user', JSON.stringify(this.user));
-  }
-
-  private showSnackBar(message: string): void {
-    this.snackBar.open(message, 'OK', { duration: 2000 });
-  }
-
-  private handleError(error: any, message: string): void {
-    console.error(error);
-    this.showSnackBar(message);
   }
 }
