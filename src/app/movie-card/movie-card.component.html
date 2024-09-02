@@ -36,8 +36,8 @@
             </button>
             <!-- Favorite/Unfavorite Button -->
             <button mat-icon-button color="warn" (click)="toggleFavorite(movie._id)">
-                <mat-icon *ngIf="isFavorite(movie._id)">favorite</mat-icon>
-                <mat-icon *ngIf="!isFavorite(movie._id)">favorite_border</mat-icon>
+                <mat-icon *ngIf="favoriteMovies.includes(movie._id)">favorite</mat-icon>
+                <mat-icon *ngIf="!favoriteMovies.includes(movie._id)">favorite_border</mat-icon>
             </button>
         </mat-card-actions>
     </mat-card>
